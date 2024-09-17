@@ -38,25 +38,19 @@ def execute_sql(conn, sql):
    except Error as e:
        print(e)
 
-def add_project(conn, project):
-    """
-    Create a new project into the projects table
-    :param conn:
-    :param project:
-    :return: project id
-    """
-    sql = '''INSERT INTO projects(nazwa, start_date, end_date)
-        VALUES(?,?,?)'''
+def add_employer(conn, employer):
+    sql = '''INSERT INTO employer(first_name,last_name,phone_number,company)
+        VALUES(?,?,?,?)'''
     cursor = conn.cursor()
-    cursor.execute(sql, project)
+    cursor.execute(sql,employer)
     conn.commit()
     return cursor.lastrowid
 
-def add_task(conn, task):
-    sql = """INSERT INTO tasks(project_id, nazwa, opis, status, start_date, end_date)
-        VALUES(?,?,?,?,?,?)"""
+def add_employee(conn, employee):
+    sql = """INSERT INTO employee(employer_id, first_name, last_name, phone_number, job)
+        VALUES(?,?,?,?,?)"""
     cursor = conn.cursor()
-    cursor.execute(sql, task)
+    cursor.execute(sql,employee)
     conn.commit()
     return cursor.lastrowid
 
@@ -80,7 +74,7 @@ def select_where(conn, table, **query):
 
 def update(conn, table, id, **kwargs):
    """
-   update status, begin_date, and end date of a task
+   update status, begin_date, and end date of a employee
    :param conn:
    :param table: table name
    :param id: row id
@@ -113,10 +107,12 @@ def delete_where(conn, table, **kwargs):
    qs = []
    values = tuple()
    for k, v in kwargs.items():
-       qs.append(f"{k}=?")
-       values += (v,)
+       if v is None:
+           qs.append(f"{k} IS NULL")
+       else:
+           qs.append(f"{k}=?")
+           values += (v,)
    q = " AND ".join(qs)
-
    sql = f'DELETE FROM {table} WHERE {q}'
    cur = conn.cursor()
    cur.execute(sql, values)
@@ -137,45 +133,45 @@ def delete_all(conn, table):
    print("Deleted")
 
 if __name__ == '__main__':
-    create_projects_sql = """
-   -- projects table
-   CREATE TABLE IF NOT EXISTS projects (
+    create_employer_sql = """
+   -- employer table
+   CREATE TABLE IF NOT EXISTS employer (
       id integer PRIMARY KEY,
-      nazwa text NOT NULL,
-      start_date text,
-      end_date text
+      first_name text NOT NULL,
+      last_name text NOT NULL,
+      phone_number varchar(12),
+      company text NOT NULL
    );
    """
-    create_tasks_sql = """
-    -- tasks table
-   CREATE TABLE IF NOT EXISTS tasks (
+    create_employee_sql = """
+    -- employee table
+   CREATE TABLE IF NOT EXISTS employee (
       id integer PRIMARY KEY,
-      project_id integer NOT NULL,
-      nazwa VARCHAR(250) NOT NULL,
-      opis TEXT,
-      status VARCHAR(15) NOT NULL,
-      start_date text NOT NULL,
-      end_date text NOT NULL,
-      FOREIGN KEY (project_id) REFERENCES projects (id)
+      employer_id integer NOT NULL,
+      first_name text NOT NULL,
+      last_name text NOT NULL,
+      phone_number varchar(12),
+      job text NOT NULL,
+      FOREIGN KEY (employer_id) REFERENCES employer (id)
    );
    """
-    my_database = create_connection("kodilla_database.db")
-    with sqlite3.connect("kodilla_database.db") as conn:
-        execute_sql(conn,create_projects_sql)
-        execute_sql(conn,create_tasks_sql)
-        add_project(conn,("Obowiązki domowe",None,None))
-        add_project(conn,("Inne obowiązki",None,"20.09.2024"))
-        task=(1,"Wyrzucić śmieci",None,"not started","17.09.2024","17.09.2024")
-        add_task(conn,task)
-        task=(1,"Pozmywać naczynia",None,"started","17.09.2024","17.09.2024")
-        add_task(conn,task)
-        task=(2,"Pójść na siłownię","Trening nóg","not started","17.09.2024","18.09.2024")
-        add_task(conn,task)
-        task=(2,"Umówić się do lekarza","Zadzwonić do +48 000 000 000","ended","17.09.2024","19.09.2024")
-        add_task(conn,task)
-        update(conn,"tasks",2,status="ended")
-        delete_where(conn,"tasks",status="ended")
-        print("To musisz dokończyć:")
-        print(select_where(conn, "tasks", status="started"))
-        print("To musisz zacząć:")
-        print(select_where(conn, "tasks", status="not started"))
+    my_database = create_connection("kodilla_database_2.db")
+    with sqlite3.connect("kodilla_database_2.db") as conn:
+        execute_sql(conn,create_employer_sql)
+        execute_sql(conn,create_employee_sql)
+        add_employer(conn,("Wyatt","Black","+44555444333","Aero Inc."))
+        add_employer(conn,("Lana","Anderson",None,"Musica Ltd."))
+        employee=(1,"Maya","Johnson","+44000111222","Architect")
+        add_employee(conn,employee)
+        employee=(1,"Jessica","Leone",None,"Engineer")
+        add_employee(conn,employee)
+        employee=(2,"Dave","Matthews","+44777333222","Manager")
+        add_employee(conn,employee)
+        employee=(2,"Ben","Davies",None,"Engineer")
+        add_employee(conn,employee)
+        update(conn,"employee",2,phone_number="+44888222111")
+        delete_where(conn,"employee",phone_number=None)
+        print("To są menadżerowie:")
+        print(select_where(conn, "employee", job="Manager"))
+        print("To są architekci:")
+        print(select_where(conn, "employee", job="Architect"))
